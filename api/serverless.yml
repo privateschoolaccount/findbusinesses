@@ -1,0 +1,23 @@
+service: findbusinesses-api
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: us-east-1
+  httpApi:
+    cors: true
+
+functions:
+  api:
+    handler: src/lambda.handler
+    events:
+      - httpApi:
+          method: ANY
+          path: /{proxy+}
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 4000
