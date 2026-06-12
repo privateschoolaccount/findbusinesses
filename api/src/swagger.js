@@ -8,9 +8,6 @@ const options = {
       version: '1.0.0',
       description: 'Search Google Maps for businesses without websites and verify via Google Search.',
     },
-    servers: [
-      { url: 'http://localhost:3001', description: 'Local development' },
-    ],
     components: {
       schemas: {
         Search: {
@@ -40,7 +37,8 @@ const options = {
             address: { type: 'string', nullable: true },
             phone: { type: 'string', nullable: true },
             place_id: { type: 'string', nullable: true },
-            website: { type: 'string', nullable: true },
+            website: { type: 'string', nullable: true, description: 'Official website URL if found' },
+            network_site: { type: 'string', nullable: true, description: 'Third-party site URL (e.g. Facebook, Yelp) if no official website' },
             website_verified: { type: 'boolean' },
             website_confirmed: { type: 'boolean' },
             status: { type: 'string', enum: ['has_website', 'no_website', 'pending_verification'] },

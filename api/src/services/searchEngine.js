@@ -20,28 +20,20 @@ export async function runSearch({ query, location, radius = 5000, type }) {
 
     for (const place of places) {
       if (place.website) {
-        const resultId = uuid();
-        createResult({
-          id: resultId,
-          searchId: id,
-          ...place,
-          status: 'has_website',
-          verificationMethod: 'google_maps',
-        });
-        resultIds[place.placeId] = resultId;
         withWebsite++;
-      } else {
-        const resultId = uuid();
-        createResult({
-          id: resultId,
-          searchId: id,
-          ...place,
-          status: 'pending_verification',
-          verificationMethod: 'google_maps',
-        });
-        resultIds[place.placeId] = resultId;
-        pendingVerification++;
+        continue;
       }
+
+      const resultId = uuid();
+      createResult({
+        id: resultId,
+        searchId: id,
+        ...place,
+        status: 'pending_verification',
+        verificationMethod: 'google_maps',
+      });
+      resultIds[place.placeId] = resultId;
+      pendingVerification++;
     }
 
     const verifiable = places.filter(p => !p.website);
@@ -62,6 +54,16 @@ export async function runSearch({ query, location, radius = 5000, type }) {
           });
           pendingVerification--;
           withWebsite++;
+        } else if (verification.networkSite) {
+          updateResult(resultId, {
+            network_site: verification.networkSite,
+            website_verified: 1,
+            website_confirmed: 0,
+            status: 'no_website',
+            verification_method: 'google_search',
+          });
+          pendingVerification--;
+          withoutWebsite++;
         } else {
           updateResult(resultId, {
             website_verified: 1,

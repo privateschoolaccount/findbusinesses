@@ -9,11 +9,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/openapi.json', (_req, res) => {
-  res.json(swaggerSpec);
+app.get('/api/openapi.json', (req, res) => {
+  const spec = {
+    ...swaggerSpec,
+    servers: [{ url: `${req.protocol}://${req.get('host')}`, description: 'Current server' }],
+  };
+  res.json(spec);
 });
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(null, {
+  swaggerUrl: '/api/openapi.json',
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'Find Businesses API Docs',
 }));

@@ -1,12 +1,12 @@
 import { getDb } from './index.js';
 
-export function createResult({ id, searchId, name, address, phone, placeId, website, status, verificationMethod, rating, totalRatings, categories, lat, lng }) {
+export function createResult({ id, searchId, name, address, phone, placeId, website, networkSite, status, verificationMethod, rating, totalRatings, categories, lat, lng }) {
   const db = getDb();
   const stmt = db.prepare(`
-    INSERT INTO results (id, search_id, name, address, phone, place_id, website, status, verification_method, rating, total_ratings, categories, lat, lng)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO results (id, search_id, name, address, phone, place_id, website, network_site, status, verification_method, rating, total_ratings, categories, lat, lng)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  stmt.run(id, searchId, name, address || null, phone || null, placeId || null, website || null, status || 'pending_verification', verificationMethod || 'google_maps', rating ?? null, totalRatings ?? null, categories ? JSON.stringify(categories) : null, lat ?? null, lng ?? null);
+  stmt.run(id, searchId, name, address || null, phone || null, placeId || null, website || null, networkSite || null, status || 'pending_verification', verificationMethod || 'google_maps', rating ?? null, totalRatings ?? null, categories ? JSON.stringify(categories) : null, lat ?? null, lng ?? null);
   return getResult(id);
 }
 
@@ -30,7 +30,7 @@ export function listResults(searchId, { page = 1, limit = 20, status } = {}) {
   const offset = (page - 1) * limit;
 
   const total = db.prepare(`SELECT COUNT(*) as count FROM results WHERE ${where}`).get(...params).count;
-  const rows = db.prepare(`SELECT * FROM results WHERE ${where} ORDER BY rating DESC, name ASC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+  const rows = db.prepare(`SELECT * FROM results WHERE ${where} ORDER BY CASE status WHEN 'no_website' THEN 0 WHEN 'pending_verification' THEN 1 WHEN 'has_website' THEN 2 ELSE 3 END, rating DESC, name ASC LIMIT ? OFFSET ?`).all(...params, limit, offset);
 
   return { rows: rows.map(formatResult), total, page, limit };
 }

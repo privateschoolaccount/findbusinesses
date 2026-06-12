@@ -43,6 +43,7 @@ function migrate() {
       phone TEXT,
       place_id TEXT,
       website TEXT,
+      network_site TEXT,
       website_verified INTEGER DEFAULT 0,
       website_confirmed INTEGER DEFAULT 0,
       status TEXT DEFAULT 'pending_verification',
@@ -60,6 +61,12 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_results_status ON results(status);
     CREATE INDEX IF NOT EXISTS idx_searches_status ON searches(status);
   `);
+
+  try {
+    db.exec('ALTER TABLE results ADD COLUMN network_site TEXT');
+  } catch {
+    // column already exists
+  }
 }
 
 export function closeDb() {
