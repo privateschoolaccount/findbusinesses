@@ -52,6 +52,7 @@ function FindingPage() {
 
   const [loading, setLoading] = useState(true);
   const [collections, setCollections] = useState([]);
+  const [currentLocation, setCurrentLocation] = useState('San Francisco');
   const [businesses, setBusinesses] = useState([]);
   const [apiError, setApiError] = useState(null);
   const [hideWithWebsite, setHideWithWebsite] = useState(true);
@@ -59,7 +60,6 @@ function FindingPage() {
   const [showPopup, setShowPopup] = useState(collectionNew);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectedCollIds, setSelectedCollIds] = useState(new Set());
-  const [expanded, setExpanded] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -67,20 +67,24 @@ function FindingPage() {
     let pollTimer;
     let safetyTimeout;
 
-    fetch('/api/collections')
-      .then(res => res.json())
-      .then(data => { if (!cancelled) setCollections(data); })
-      .catch(() => {});
-
-    fetch('/api/searches', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: searchPrompt, location: 'San Francisco', radius: 5000 }),
-    })
-      .then(res => res.json())
-      .then(data => {
+    async function init() {
+      try {
+        const collRes = await fetch('/api/collections');
+        const collData = await collRes.json();
         if (cancelled) return;
-        const searchId = data.id;
+        setCollections(collData);
+        const match = collData.find(c => c.name === collectionName);
+        const location = (match && match.location) || 'San Francisco';
+        setCurrentLocation(location);
+
+        const searchRes = await fetch('/api/searches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchPrompt, location, radius: 5000 }),
+        });
+        const searchData = await searchRes.json();
+        if (cancelled) return;
+        const searchId = searchData.id;
 
         pollTimer = setInterval(() => {
           if (cancelled) return;
@@ -99,15 +103,13 @@ function FindingPage() {
 
           fetch(`/api/searches/${searchId}`)
             .then(res => res.json())
-            .then(searchData => {
+            .then(sd => {
               if (cancelled) return;
-              if (searchData.status === 'completed' || searchData.status === 'failed') {
+              if (sd.status === 'completed' || sd.status === 'failed') {
                 clearInterval(pollTimer);
                 clearTimeout(safetyTimeout);
                 setLoading(false);
-                if (searchData.status === 'failed') {
-                  setApiError('Search failed — showing sample data');
-                }
+                if (sd.status === 'failed') setApiError('Search failed — showing sample data');
               }
             })
             .catch(() => {});
@@ -122,14 +124,16 @@ function FindingPage() {
           }
           cancelled = true;
         }, 120000);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setBusinesses(FALLBACK_BUSINESSES);
           setApiError('Search API unavailable — showing sample data');
           setLoading(false);
         }
-      });
+      }
+    }
+
+    init();
 
     return () => {
       cancelled = true;
@@ -144,6 +148,13 @@ function FindingPage() {
       return () => clearTimeout(timer);
     }
   }, [showPopup]);
+
+  const recentCollections = [...collections]
+    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
+    .slice(0, 5);
+
+  const sortedCollections = [...collections]
+    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
 
   const results = businesses.filter(b => {
     if (hideWithWebsite && b.websiteStatus === 'has_website') return false;
@@ -168,25 +179,36 @@ function FindingPage() {
     }
   }
 
-  function handleAddAll() {
-    const coll = collections.find(c => c.name === collectionName);
-    if (!coll) {
-      alert(`Collection "${collectionName}" not found. Create it first.`);
-      return;
-    }
-    const resultIds = results.map(b => b.id.toString());
-    fetch(`/api/collections/${coll.id}/businesses`, {
+  function addToCollection(collId, ids) {
+    return fetch(`/api/collections/${collId}/businesses`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resultIds }),
-    })
+      body: JSON.stringify({ resultIds: ids.map(id => id.toString()) }),
+    });
+  }
+
+  function handleAddAllToRecent() {
+    const ids = results.map(b => b.id);
+    Promise.all(
+      recentCollections.map(c => addToCollection(c.id, ids))
+    ).then(responses => {
+      if (responses.every(r => r.ok)) {
+        const names = recentCollections.map(c => c.name).join(', ');
+        alert(`Added all to: ${names}`);
+      }
+    });
+  }
+
+  function handleAddAllToName() {
+    const coll = collections.find(c => c.name === collectionName);
+    if (!coll) {
+      alert(`Collection "${collectionName}" not found.`);
+      return;
+    }
+    addToCollection(coll.id, results.map(b => b.id))
       .then(res => {
-        if (res.ok) {
-          const names = results.map(b => b.name).join(', ');
-          alert(`Added to "${collectionName}": ${names}`);
-        }
-      })
-      .catch(() => {});
+        if (res.ok) alert(`Added all to "${collectionName}"`);
+      });
   }
 
   function toggleCollection(id) {
@@ -201,18 +223,11 @@ function FindingPage() {
   function handleAddSelected() {
     if (selectedCollIds.size === 0) return;
     const selected = results.filter(b => selectedIds.has(b.id));
-    const resultIds = selected.map(b => b.id.toString());
     const targetColls = collections.filter(c => selectedCollIds.has(c.id));
     const collNames = targetColls.map(c => c.name).join(', ');
 
     Promise.all(
-      targetColls.map(coll =>
-        fetch(`/api/collections/${coll.id}/businesses`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resultIds }),
-        })
-      )
+      targetColls.map(c => addToCollection(c.id, selected.map(b => b.id)))
     ).then(responses => {
       if (responses.every(r => r.ok)) {
         const bizNames = selected.map(b => b.name).join(', ');
@@ -240,7 +255,7 @@ function FindingPage() {
       <div className="finding-page__header">
         <h1 className="headline-md">{collectionName || 'Finding Businesses'}</h1>
         <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 'var(--space-xs)' }}>
-          San Francisco
+          {currentLocation}
           {!loading && (
             <> &middot; {statusCount('no_website')} without &middot; {statusCount('pending')} pending &middot; {statusCount('has_website')} with website</>
           )}
@@ -275,31 +290,10 @@ function FindingPage() {
           <div className="mock-map__canvas skeleton" />
         </div>
       ) : (
-        <MockMap businesses={results} area="San Francisco" />
+        <MockMap businesses={results} area={currentLocation} />
       )}
 
-      {!loading && collectionNew && (
-        <div className="add-bar">
-          <button className="add-bar__main" onClick={handleAddAll}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Add All to {collectionName}
-          </button>
-          <button
-            className={`add-bar__toggle ${expanded ? 'add-bar__toggle--open' : ''}`}
-            onClick={() => setExpanded(v => !v)}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {!loading && !collectionNew && (
+      {!loading && (
         <div className="add-bar">
           <div className="add-bar__select-all">
             <label className="checkbox">
@@ -314,9 +308,20 @@ function FindingPage() {
               {selectedIds.size} selected
             </span>
           </div>
+
+          {collectionNew ? (
+            <button className="btn btn--primary" onClick={handleAddAllToName}>
+              Add All to {collectionName}
+            </button>
+          ) : (
+            <button className="btn btn--primary" onClick={handleAddAllToRecent}>
+              Add All to 5 Recent
+            </button>
+          )}
+
           <div className="add-bar__dropdown-wrapper">
             <button
-              className="btn btn--primary"
+              className="btn btn--secondary"
               disabled={selectedIds.size === 0}
               onClick={() => { setDropdownOpen(v => !v); if (!dropdownOpen) setSelectedCollIds(new Set()); }}
             >
@@ -325,9 +330,9 @@ function FindingPage() {
                 : 'Add Selected'}
             </button>
             {dropdownOpen && (
-              <div className="dropdown">
+              <div className="dropdown dropdown--wide">
                 <div className="dropdown__list">
-                  {collections.map(c => (
+                  {sortedCollections.map(c => (
                     <label className="dropdown__item" key={c.id}>
                       <span className="checkbox">
                         <input
@@ -337,7 +342,10 @@ function FindingPage() {
                         />
                         <span className="checkbox__mark" />
                       </span>
-                      {c.name}
+                      <span className="dropdown__item-name">{c.name}</span>
+                      {recentCollections.includes(c) && (
+                        <span className="chip chip--recent">Recent</span>
+                      )}
                     </label>
                   ))}
                 </div>

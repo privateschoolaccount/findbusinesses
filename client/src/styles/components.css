@@ -557,6 +557,14 @@
   background: rgba(107, 114, 128, 0.1);
 }
 
+.chip--recent {
+  color: var(--color-navy);
+  background: rgba(15, 23, 42, 0.08);
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: auto;
+}
+
 /* ==============================
    Create Collection Page
    ============================== */
@@ -1033,6 +1041,10 @@
   overflow: hidden;
 }
 
+.dropdown--wide {
+  min-width: 280px;
+}
+
 .dropdown__list {
   padding: var(--space-xs);
   max-height: 220px;
@@ -1058,6 +1070,14 @@
 
 .dropdown__item:hover {
   background: var(--surface-container-high);
+}
+
+.dropdown__item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdown__apply {
