@@ -78,7 +78,6 @@ class TestCollectionsDAO(unittest.TestCase):
         self.assertEqual(c['name'], 'Test SaaS')
         self.assertEqual(c['location'], 'SF')
         self.assertEqual(c['tags'], ['SaaS', 'Tech'])
-        self.assertEqual(c['status'], 'saved')
         self.assertEqual(c['totalLeads'], 0)
         self.assertEqual(c['noWebsite'], 0)
         self.assertEqual(c['newLeads'], 0)
@@ -110,10 +109,8 @@ class TestCollectionsDAO(unittest.TestCase):
     def test_update_collection(self):
         c = create_collection('Original')
         old_updated = c['updated_at']
-        updated = update_collection(c['id'], name='Changed', status='researching',
-                                     tags=['X', 'Y'])
+        updated = update_collection(c['id'], name='Changed', tags=['X', 'Y'])
         self.assertEqual(updated['name'], 'Changed')
-        self.assertEqual(updated['status'], 'researching')
         self.assertEqual(updated['tags'], ['X', 'Y'])
         self.assertGreaterEqual(updated['updated_at'], old_updated)
 
@@ -184,8 +181,6 @@ class TestCollectionsHTTP(unittest.TestCase):
         self.assertEqual(body['name'], 'HTTP Coll')
         self.assertEqual(body['location'], 'NYC')
         self.assertEqual(body['tags'], ['FinTech'])
-        self.assertEqual(body['status'], 'saved')
-
     def test_post_returns_400_when_name_missing(self):
         resp = client.post('/api/collections', json={'location': 'X'})
         self.assertEqual(resp.status_code, 400)
@@ -211,11 +206,10 @@ class TestCollectionsHTTP(unittest.TestCase):
     def test_patch_updates_collection(self):
         created = client.post('/api/collections', json={'name': 'Original'}).json()
         resp = client.patch(f'/api/collections/{created["id"]}', json={
-            'name': 'Updated', 'status': 'researching',
+            'name': 'Updated',
         })
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()['name'], 'Updated')
-        self.assertEqual(resp.json()['status'], 'researching')
 
     def test_delete_removes_collection(self):
         created = client.post('/api/collections', json={'name': 'Delete Me'}).json()

@@ -66,7 +66,6 @@ function migrate() {
       name TEXT NOT NULL,
       location TEXT,
       tags TEXT,
-      status TEXT DEFAULT 'saved',
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );

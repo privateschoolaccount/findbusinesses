@@ -93,7 +93,6 @@ describe('collections', () => {
     assert.equal(c.name, 'Test SaaS');
     assert.equal(c.location, 'SF');
     assert.deepEqual(c.tags, ['SaaS', 'Tech']);
-    assert.equal(c.status, 'saved');
     assert.equal(c.totalLeads, 0);
     assert.equal(c.noWebsite, 0);
     assert.equal(c.newLeads, 0);
@@ -125,9 +124,8 @@ describe('collections', () => {
 
   it('updateCollection updates fields and bumps updated_at', () => {
     const old = getCollection(collId);
-    const u = updateCollection(collId, { name: 'Updated SaaS', status: 'researching', tags: ['SaaS', 'Enterprise'] });
+    const u = updateCollection(collId, { name: 'Updated SaaS', tags: ['SaaS', 'Enterprise'] });
     assert.equal(u.name, 'Updated SaaS');
-    assert.equal(u.status, 'researching');
     assert.deepEqual(u.tags, ['SaaS', 'Enterprise']);
     assert.ok(u.updated_at >= old.updated_at);
   });
@@ -207,7 +205,6 @@ describe('collections', () => {
     assert.equal(res.body.name, 'HTTP Coll');
     assert.equal(res.body.location, 'NYC');
     assert.deepEqual(res.body.tags, ['FinTech']);
-    assert.equal(res.body.status, 'saved');
     collId = res.body.id;
   });
 
@@ -239,11 +236,9 @@ describe('collections', () => {
   it('PATCH /api/collections/:id — updates collection', async () => {
     const res = await httpRequest('PATCH', `/api/collections/${collId}`, {
       name: 'Updated HTTP Coll',
-      status: 'researching',
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.name, 'Updated HTTP Coll');
-    assert.equal(res.body.status, 'researching');
   });
 
   it('DELETE /api/collections/:id — deletes collection', async () => {

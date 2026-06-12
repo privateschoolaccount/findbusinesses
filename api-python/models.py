@@ -86,7 +86,7 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = Field(default=None, description='Collection name')
     location: Optional[str] = Field(default=None, description='Target location')
     tags: Optional[list[str]] = Field(default=None, description='Business categories / tags')
-    status: Optional[str] = Field(default=None, description='Status: saved or researching')
+    tags: Optional[list[str]] = Field(default=None, description='Business categories / tags')
 
 
 class CollectionResponse(BaseModel):
@@ -94,7 +94,6 @@ class CollectionResponse(BaseModel):
     name: str
     location: Optional[str] = None
     tags: Optional[list[str]] = None
-    status: str = 'saved'
     totalLeads: int = 0
     noWebsite: int = 0
     newLeads: int = 0

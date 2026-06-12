@@ -52,6 +52,44 @@ const options = {
             created_at: { type: 'string', format: 'date-time' },
           },
         },
+        Collection: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer', description: 'Auto-increment ID' },
+            name: { type: 'string', description: 'Collection name' },
+            location: { type: 'string', nullable: true, description: 'Target location' },
+            tags: { type: 'array', items: { type: 'string' }, nullable: true, description: 'Business categories / tags' },
+            totalLeads: { type: 'integer', description: 'Total businesses in collection' },
+            noWebsite: { type: 'integer', description: 'Businesses without a website' },
+            newLeads: { type: 'integer', description: 'Businesses added in the last 7 days' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        CollectionCreate: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string', description: 'Collection name' },
+            location: { type: 'string', description: 'Target location', nullable: true },
+            tags: { type: 'array', items: { type: 'string' }, description: 'Business categories', nullable: true },
+          },
+        },
+        CollectionUpdate: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Collection name' },
+            location: { type: 'string', description: 'Target location', nullable: true },
+            tags: { type: 'array', items: { type: 'string' }, description: 'Business categories', nullable: true },
+          },
+        },
+        AddBusinessesRequest: {
+          type: 'object',
+          required: ['resultIds'],
+          properties: {
+            resultIds: { type: 'array', items: { type: 'string' }, description: 'Result IDs to add' },
+          },
+        },
       },
     },
   },
