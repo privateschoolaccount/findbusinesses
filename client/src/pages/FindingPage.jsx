@@ -39,6 +39,9 @@ function normalizeBusiness(b) {
     type: b.type || b.categories || 'Unknown',
     area: b.address || b.area || 'Unknown',
     websiteStatus,
+    placeId: b.place_id,
+    lat: b.lat,
+    lng: b.lng,
     x: b.x ?? (((b.lng || -122.4) + 122.5) * 100),
     y: b.y ?? ((37.8 - (b.lat || 37.8)) * 200),
   };
@@ -380,6 +383,21 @@ function FindingPage() {
                 <span className={`chip ${STATUS_CHIP[b.websiteStatus] || 'chip--pending'}`}>
                   {STATUS_LABELS[b.websiteStatus] || 'Pending Verification'}
                 </span>
+                {b.placeId && (
+                  <a
+                    className="result-card__map-link"
+                    href={`https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${b.placeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    title="Open in Google Maps"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  </a>
+                )}
               </div>
             </div>
           ))
