@@ -60,6 +60,26 @@ function migrate() {
     CREATE INDEX IF NOT EXISTS idx_results_search_id ON results(search_id);
     CREATE INDEX IF NOT EXISTS idx_results_status ON results(status);
     CREATE INDEX IF NOT EXISTS idx_searches_status ON searches(status);
+
+    CREATE TABLE IF NOT EXISTS collections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      location TEXT,
+      tags TEXT,
+      status TEXT DEFAULT 'saved',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS collection_businesses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+      result_id TEXT NOT NULL REFERENCES results(id) ON DELETE CASCADE,
+      added_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cb_collection_id ON collection_businesses(collection_id);
+    CREATE INDEX IF NOT EXISTS idx_cb_result_id ON collection_businesses(result_id);
   `);
 
   try {

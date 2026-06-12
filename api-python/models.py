@@ -76,6 +76,36 @@ class StatsResponse(BaseModel):
     verified_count: int
 
 
+class CollectionCreate(BaseModel):
+    name: Optional[str] = Field(default=None, description='Collection name')
+    location: Optional[str] = Field(default=None, description='Target location')
+    tags: Optional[list[str]] = Field(default=None, description='Business categories / tags')
+
+
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, description='Collection name')
+    location: Optional[str] = Field(default=None, description='Target location')
+    tags: Optional[list[str]] = Field(default=None, description='Business categories / tags')
+    status: Optional[str] = Field(default=None, description='Status: saved or researching')
+
+
+class CollectionResponse(BaseModel):
+    id: int
+    name: str
+    location: Optional[str] = None
+    tags: Optional[list[str]] = None
+    status: str = 'saved'
+    totalLeads: int = 0
+    noWebsite: int = 0
+    newLeads: int = 0
+    created_at: str = ''
+    updated_at: str = ''
+
+
+class AddBusinessesRequest(BaseModel):
+    resultIds: list[str] = Field(description='Array of result IDs to add')
+
+
 class ErrorResponse(BaseModel):
     error: str
 

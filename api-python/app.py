@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.searches import router as searches_router
 from routes.results import router as results_router
 from routes.stats import router as stats_router
+from routes.collections import router as collections_router
 
 app = FastAPI(
     title='Find Businesses API',
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(searches_router)
 app.include_router(results_router)
 app.include_router(stats_router)
+app.include_router(collections_router)
 
 
 @app.get('/health')

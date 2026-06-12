@@ -4,3 +4,4 @@ dist/
 *.log
 .serverless/
 api/data/
+.vscode/
