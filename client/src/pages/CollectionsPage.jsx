@@ -1,13 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const MOCK_COLLECTIONS = [
-  { id: 1, name: 'SaaS Companies', status: 'saved', location: 'San Francisco, CA', totalLeads: 42, noWebsite: 8, newLeads: 3 },
-  { id: 2, name: 'Manufacturing', status: 'researching', location: 'Austin, TX', totalLeads: 28, noWebsite: 12, newLeads: 5 },
-  { id: 3, name: 'HealthTech', status: 'saved', location: 'Boston, MA', totalLeads: 19, noWebsite: 4, newLeads: 0 },
-  { id: 4, name: 'Enterprise SaaS', status: 'researching', location: 'New York, NY', totalLeads: 35, noWebsite: 6, newLeads: 7 },
-  { id: 5, name: 'Industrial Automation', status: 'saved', location: 'Chicago, IL', totalLeads: 15, noWebsite: 9, newLeads: 2 },
-];
 
 const STATUS_LABELS = {
   saved: 'Saved',
@@ -16,8 +8,28 @@ const STATUS_LABELS = {
 
 function CollectionsPage() {
   const [search, setSearch] = useState('');
+  const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_COLLECTIONS.filter(c =>
+  useEffect(() => {
+    fetch('/api/collections')
+      .then(res => res.json())
+      .then(data => {
+        setCollections(data.map(c => ({
+          ...c,
+          status: c.status || 'saved',
+          totalLeads: c.totalLeads || 0,
+          noWebsite: c.noWebsite || 0,
+          newLeads: c.newLeads || 0,
+        })));
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const filtered = collections.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -29,7 +41,7 @@ function CollectionsPage() {
       <div className="collections-page__header">
         <h1 className="headline-md">Lead Collections</h1>
         <p className="body-md" style={{ color: 'var(--on-surface-variant)', marginTop: 'var(--space-xs)' }}>
-          {filtered.length} active lead list{filtered.length !== 1 ? 's' : ''}
+          {loading ? 'Loading...' : `${filtered.length} active lead list${filtered.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -45,7 +57,9 @@ function CollectionsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <Link to="/collections/finding/New%20Search?collectionNew=false" className="btn btn--primary" style={{ textDecoration: 'none' }}>Add Businesses</Link>
+        <Link to="/collections/finding/New%20Search?collectionNew=false" className="btn btn--primary" style={{ textDecoration: 'none' }}>
+          Add Businesses
+        </Link>
       </div>
 
       <div className="collections-stats">
@@ -60,12 +74,26 @@ function CollectionsPage() {
       </div>
 
       <div className="collections-list">
-        {filtered.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div className="collection-card" key={i}>
+              <div className="collection-card__top">
+                <div className="skeleton" style={{ width: '50%', height: 20 }} />
+                <div className="skeleton" style={{ width: 60, height: 20, borderRadius: 9999 }} />
+              </div>
+              <div className="collection-card__details" style={{ marginTop: 8 }}>
+                <div className="skeleton" style={{ width: '30%', height: 14 }} />
+                <div className="skeleton" style={{ width: '20%', height: 14 }} />
+                <div className="skeleton" style={{ width: '25%', height: 14 }} />
+              </div>
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
           <div className="empty-state">
             <p className="headline-sm" style={{ color: 'var(--on-surface-variant)' }}>
               No collections found
             </p>
-            <p className="body-md">Try a different search term</p>
+            <p className="body-md">Create one to get started</p>
           </div>
         ) : (
           filtered.map(c => (
@@ -73,7 +101,7 @@ function CollectionsPage() {
               <div className="collection-card__top">
                 <div className="collection-card__name">{c.name}</div>
                 <span className={`chip chip--${c.status}`}>
-                  {STATUS_LABELS[c.status]}
+                  {STATUS_LABELS[c.status] || c.status}
                 </span>
               </div>
               <div className="collection-card__details">
@@ -84,7 +112,7 @@ function CollectionsPage() {
                       <circle cx="12" cy="10" r="3"/>
                     </svg>
                   </span>
-                  <span className="body-sm">{c.location}</span>
+                  <span className="body-sm">{c.location || 'No location'}</span>
                 </div>
                 <div className="collection-card__stat">
                   <span className="data-mono">{c.totalLeads}</span>

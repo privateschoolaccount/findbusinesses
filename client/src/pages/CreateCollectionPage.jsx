@@ -39,7 +39,22 @@ function CreateCollectionPage() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    navigate(`/collections/finding/${encodeURIComponent(name.trim())}?collectionNew=true`);
+    fetch('/api/collections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name.trim(),
+        location: location.trim() || null,
+        tags: tags.length > 0 ? tags : null,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        navigate(`/collections/finding/${encodeURIComponent(data.name)}?collectionNew=true`);
+      })
+      .catch(() => {
+        navigate(`/collections/finding/${encodeURIComponent(name.trim())}?collectionNew=true`);
+      });
   }
 
   return (

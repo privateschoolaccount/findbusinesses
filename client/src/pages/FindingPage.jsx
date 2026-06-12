@@ -4,24 +4,28 @@ import MockMap from '../components/MockMap';
 
 const CATEGORIES = ['SaaS', 'Manufacturing', 'HealthTech', 'Enterprise Software', 'E-commerce', 'FinTech'];
 
-const MOCK_BUSINESSES = [
-  { id: 1, name: 'TechFlow Solutions', type: 'SaaS', area: 'San Francisco', hasWebsite: false, x: 35, y: 28 },
-  { id: 2, name: 'GreenLeaf Analytics', type: 'Data & AI', area: 'San Francisco', hasWebsite: true, x: 60, y: 45 },
-  { id: 3, name: 'BridgePoint Systems', type: 'SaaS', area: 'San Francisco', hasWebsite: false, x: 72, y: 55 },
-  { id: 4, name: 'NorthBay Software', type: 'Enterprise Software', area: 'San Francisco', hasWebsite: false, x: 45, y: 18 },
-  { id: 5, name: 'Coastal Data Group', type: 'FinTech', area: 'San Francisco', hasWebsite: true, x: 80, y: 70 },
-  { id: 6, name: 'Summit Innovations', type: 'HealthTech', area: 'San Francisco', hasWebsite: false, x: 22, y: 65 },
-  { id: 7, name: 'Pacific Digital', type: 'E-commerce', area: 'San Francisco', hasWebsite: false, x: 50, y: 80 },
-  { id: 8, name: 'Peninsula Robotics', type: 'Manufacturing', area: 'San Francisco', hasWebsite: false, x: 15, y: 40 },
+const FALLBACK_BUSINESSES = [
+  { id: 'fb-1', name: 'TechFlow Solutions', type: 'SaaS', address: 'San Francisco', hasWebsite: false, lat: 37.78, lng: -122.42, x: 35, y: 28 },
+  { id: 'fb-2', name: 'GreenLeaf Analytics', type: 'Data & AI', address: 'San Francisco', hasWebsite: true, lat: 37.79, lng: -122.41, x: 60, y: 45 },
+  { id: 'fb-3', name: 'BridgePoint Systems', type: 'SaaS', address: 'San Francisco', hasWebsite: false, lat: 37.77, lng: -122.39, x: 72, y: 55 },
+  { id: 'fb-4', name: 'NorthBay Software', type: 'Enterprise Software', address: 'San Francisco', hasWebsite: false, lat: 37.80, lng: -122.44, x: 45, y: 18 },
+  { id: 'fb-5', name: 'Coastal Data Group', type: 'FinTech', address: 'San Francisco', hasWebsite: true, lat: 37.76, lng: -122.40, x: 80, y: 70 },
+  { id: 'fb-6', name: 'Summit Innovations', type: 'HealthTech', address: 'San Francisco', hasWebsite: false, lat: 37.81, lng: -122.43, x: 22, y: 65 },
+  { id: 'fb-7', name: 'Pacific Digital', type: 'E-commerce', address: 'San Francisco', hasWebsite: false, lat: 37.75, lng: -122.38, x: 50, y: 80 },
+  { id: 'fb-8', name: 'Peninsula Robotics', type: 'Manufacturing', address: 'San Francisco', hasWebsite: false, lat: 37.82, lng: -122.45, x: 15, y: 40 },
 ];
 
-const MOCK_COLLECTIONS = [
-  { id: 1, name: 'SaaS Companies' },
-  { id: 2, name: 'Manufacturing' },
-  { id: 3, name: 'HealthTech' },
-  { id: 4, name: 'Enterprise SaaS' },
-  { id: 5, name: 'Industrial Automation' },
-];
+function normalizeBusiness(b) {
+  return {
+    id: b.id,
+    name: b.name,
+    type: b.type || b.categories || 'Unknown',
+    area: b.address || b.area || 'Unknown',
+    hasWebsite: b.status === 'has_website' ? true : (b.hasWebsite ?? (b.status !== 'no_website')),
+    x: b.x ?? (((b.lng || -122.4) + 122.5) * 100),
+    y: b.y ?? ((37.8 - (b.lat || 37.8)) * 200),
+  };
+}
 
 function FindingPage() {
   const { collectionName } = useParams();
@@ -29,6 +33,9 @@ function FindingPage() {
   const collectionNew = searchParams.get('collectionNew') === 'true';
 
   const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
+  const [apiError, setApiError] = useState(null);
   const [noWebsitesOnly, setNoWebsitesOnly] = useState(true);
   const [activeCategory, setActiveCategory] = useState(null);
   const [showPopup, setShowPopup] = useState(collectionNew);
@@ -38,9 +45,33 @@ function FindingPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1800);
-    return () => clearTimeout(timer);
-  }, []);
+    fetch('/api/collections')
+      .then(res => res.json())
+      .then(data => setCollections(data))
+      .catch(() => {});
+
+    const query = collectionName || 'businesses';
+    fetch(`/api/searches?wait=true`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, location: 'San Francisco', radius: 5000 }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        const items = data.results || data.rows || [];
+        if (items.length > 0) {
+          setBusinesses(items.map(normalizeBusiness));
+        } else {
+          setBusinesses(FALLBACK_BUSINESSES);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setBusinesses(FALLBACK_BUSINESSES);
+        setApiError('Search API unavailable — showing sample data');
+        setLoading(false);
+      });
+  }, [collectionName]);
 
   useEffect(() => {
     if (showPopup) {
@@ -49,7 +80,7 @@ function FindingPage() {
     }
   }, [showPopup]);
 
-  const results = MOCK_BUSINESSES.filter(b => {
+  const results = businesses.filter(b => {
     if (noWebsitesOnly && b.hasWebsite) return false;
     if (activeCategory && b.type !== activeCategory) return false;
     return true;
@@ -73,8 +104,24 @@ function FindingPage() {
   }
 
   function handleAddAll() {
-    const names = results.map(b => b.name).join(', ');
-    alert(`Added to "${collectionName}": ${names}`);
+    const coll = collections.find(c => c.name === collectionName);
+    if (!coll) {
+      alert(`Collection "${collectionName}" not found. Create it first.`);
+      return;
+    }
+    const resultIds = results.map(b => b.id.toString());
+    fetch(`/api/collections/${coll.id}/businesses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resultIds }),
+    })
+      .then(res => {
+        if (res.ok) {
+          const names = results.map(b => b.name).join(', ');
+          alert(`Added to "${collectionName}": ${names}`);
+        }
+      })
+      .catch(() => {});
   }
 
   function toggleCollection(id) {
@@ -89,10 +136,25 @@ function FindingPage() {
   function handleAddSelected() {
     if (selectedCollIds.size === 0) return;
     const selected = results.filter(b => selectedIds.has(b.id));
-    const collNames = MOCK_COLLECTIONS.filter(c => selectedCollIds.has(c.id)).map(c => c.name).join(', ');
-    const bizNames = selected.map(b => b.name).join(', ');
-    alert(`Added to "${collNames}": ${bizNames}`);
-    setDropdownOpen(false);
+    const resultIds = selected.map(b => b.id.toString());
+    const targetColls = collections.filter(c => selectedCollIds.has(c.id));
+    const collNames = targetColls.map(c => c.name).join(', ');
+
+    Promise.all(
+      targetColls.map(coll =>
+        fetch(`/api/collections/${coll.id}/businesses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resultIds }),
+        })
+      )
+    ).then(responses => {
+      if (responses.every(r => r.ok)) {
+        const bizNames = selected.map(b => b.name).join(', ');
+        alert(`Added to "${collNames}": ${bizNames}`);
+      }
+      setDropdownOpen(false);
+    });
   }
 
   return (
@@ -109,7 +171,8 @@ function FindingPage() {
       <div className="finding-page__header">
         <h1 className="headline-md">{collectionName || 'Finding Businesses'}</h1>
         <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 'var(--space-xs)' }}>
-          San Francisco &middot; {MOCK_BUSINESSES.filter(b => !b.hasWebsite).length} without website
+          San Francisco &middot; {businesses.filter(b => !b.hasWebsite).length} without website
+          {apiError && <span style={{ color: 'var(--color-hot)', marginLeft: 8 }}>({apiError})</span>}
         </p>
       </div>
 
@@ -192,7 +255,7 @@ function FindingPage() {
             {dropdownOpen && (
               <div className="dropdown">
                 <div className="dropdown__list">
-                  {MOCK_COLLECTIONS.map(c => (
+                  {collections.map(c => (
                     <label className="dropdown__item" key={c.id}>
                       <span className="checkbox">
                         <input
