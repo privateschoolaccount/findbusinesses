@@ -552,6 +552,11 @@
   background: rgba(217, 119, 6, 0.1);
 }
 
+.chip--pending {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
 /* ==============================
    Create Collection Page
    ============================== */

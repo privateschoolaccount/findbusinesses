@@ -4,24 +4,41 @@ import MockMap from '../components/MockMap';
 
 const CATEGORIES = ['SaaS', 'Manufacturing', 'HealthTech', 'Enterprise Software', 'E-commerce', 'FinTech'];
 
+const STATUS_LABELS = {
+  has_website: 'Has Website',
+  no_website: 'Without Website',
+  pending: 'Pending Verification',
+};
+
+const STATUS_CHIP = {
+  has_website: 'chip--success',
+  no_website: 'chip--new',
+  pending: 'chip--pending',
+};
+
 const FALLBACK_BUSINESSES = [
-  { id: 'fb-1', name: 'TechFlow Solutions', type: 'SaaS', address: 'San Francisco', hasWebsite: false, lat: 37.78, lng: -122.42, x: 35, y: 28 },
-  { id: 'fb-2', name: 'GreenLeaf Analytics', type: 'Data & AI', address: 'San Francisco', hasWebsite: true, lat: 37.79, lng: -122.41, x: 60, y: 45 },
-  { id: 'fb-3', name: 'BridgePoint Systems', type: 'SaaS', address: 'San Francisco', hasWebsite: false, lat: 37.77, lng: -122.39, x: 72, y: 55 },
-  { id: 'fb-4', name: 'NorthBay Software', type: 'Enterprise Software', address: 'San Francisco', hasWebsite: false, lat: 37.80, lng: -122.44, x: 45, y: 18 },
-  { id: 'fb-5', name: 'Coastal Data Group', type: 'FinTech', address: 'San Francisco', hasWebsite: true, lat: 37.76, lng: -122.40, x: 80, y: 70 },
-  { id: 'fb-6', name: 'Summit Innovations', type: 'HealthTech', address: 'San Francisco', hasWebsite: false, lat: 37.81, lng: -122.43, x: 22, y: 65 },
-  { id: 'fb-7', name: 'Pacific Digital', type: 'E-commerce', address: 'San Francisco', hasWebsite: false, lat: 37.75, lng: -122.38, x: 50, y: 80 },
-  { id: 'fb-8', name: 'Peninsula Robotics', type: 'Manufacturing', address: 'San Francisco', hasWebsite: false, lat: 37.82, lng: -122.45, x: 15, y: 40 },
+  { id: 'fb-1', name: 'TechFlow Solutions', type: 'SaaS', address: 'San Francisco', websiteStatus: 'no_website', lat: 37.78, lng: -122.42, x: 35, y: 28 },
+  { id: 'fb-2', name: 'GreenLeaf Analytics', type: 'Data & AI', address: 'San Francisco', websiteStatus: 'has_website', lat: 37.79, lng: -122.41, x: 60, y: 45 },
+  { id: 'fb-3', name: 'BridgePoint Systems', type: 'SaaS', address: 'San Francisco', websiteStatus: 'no_website', lat: 37.77, lng: -122.39, x: 72, y: 55 },
+  { id: 'fb-4', name: 'NorthBay Software', type: 'Enterprise Software', address: 'San Francisco', websiteStatus: 'pending', lat: 37.80, lng: -122.44, x: 45, y: 18 },
+  { id: 'fb-5', name: 'Coastal Data Group', type: 'FinTech', address: 'San Francisco', websiteStatus: 'has_website', lat: 37.76, lng: -122.40, x: 80, y: 70 },
+  { id: 'fb-6', name: 'Summit Innovations', type: 'HealthTech', address: 'San Francisco', websiteStatus: 'no_website', lat: 37.81, lng: -122.43, x: 22, y: 65 },
+  { id: 'fb-7', name: 'Pacific Digital', type: 'E-commerce', address: 'San Francisco', websiteStatus: 'pending', lat: 37.75, lng: -122.38, x: 50, y: 80 },
+  { id: 'fb-8', name: 'Peninsula Robotics', type: 'Manufacturing', address: 'San Francisco', websiteStatus: 'no_website', lat: 37.82, lng: -122.45, x: 15, y: 40 },
 ];
 
 function normalizeBusiness(b) {
+  let websiteStatus = b.websiteStatus || 'pending';
+  if (b.status === 'has_website' || b.hasWebsite === true) websiteStatus = 'has_website';
+  else if (b.status === 'no_website' || b.hasWebsite === false) websiteStatus = 'no_website';
+  else if (b.status === 'pending_verification') websiteStatus = 'pending';
+
   return {
     id: b.id,
     name: b.name,
     type: b.type || b.categories || 'Unknown',
     area: b.address || b.area || 'Unknown',
-    hasWebsite: b.status === 'has_website' ? true : (b.hasWebsite ?? (b.status !== 'no_website')),
+    websiteStatus,
     x: b.x ?? (((b.lng || -122.4) + 122.5) * 100),
     y: b.y ?? ((37.8 - (b.lat || 37.8)) * 200),
   };
@@ -37,7 +54,7 @@ function FindingPage() {
   const [collections, setCollections] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [apiError, setApiError] = useState(null);
-  const [noWebsitesOnly, setNoWebsitesOnly] = useState(true);
+  const [hideWithWebsite, setHideWithWebsite] = useState(true);
   const [activeCategory, setActiveCategory] = useState(null);
   const [showPopup, setShowPopup] = useState(collectionNew);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -88,6 +105,9 @@ function FindingPage() {
                 clearInterval(pollTimer);
                 clearTimeout(safetyTimeout);
                 setLoading(false);
+                if (searchData.status === 'failed') {
+                  setApiError('Search failed — showing sample data');
+                }
               }
             })
             .catch(() => {});
@@ -95,7 +115,11 @@ function FindingPage() {
 
         safetyTimeout = setTimeout(() => {
           clearInterval(pollTimer);
-          setLoading(false);
+          if (!cancelled) {
+            setBusinesses(FALLBACK_BUSINESSES);
+            setApiError('Search timed out — showing sample data');
+            setLoading(false);
+          }
           cancelled = true;
         }, 120000);
       })
@@ -122,7 +146,7 @@ function FindingPage() {
   }, [showPopup]);
 
   const results = businesses.filter(b => {
-    if (noWebsitesOnly && b.hasWebsite) return false;
+    if (hideWithWebsite && b.websiteStatus === 'has_website') return false;
     if (activeCategory && b.type !== activeCategory) return false;
     return true;
   });
@@ -198,6 +222,10 @@ function FindingPage() {
     });
   }
 
+  function statusCount(status) {
+    return businesses.filter(b => b.websiteStatus === status).length;
+  }
+
   return (
     <div className="search-page">
       {showPopup && (
@@ -212,15 +240,18 @@ function FindingPage() {
       <div className="finding-page__header">
         <h1 className="headline-md">{collectionName || 'Finding Businesses'}</h1>
         <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 'var(--space-xs)' }}>
-          San Francisco &middot; {businesses.filter(b => !b.hasWebsite).length} without website
+          San Francisco
+          {!loading && (
+            <> &middot; {statusCount('no_website')} without &middot; {statusCount('pending')} pending &middot; {statusCount('has_website')} with website</>
+          )}
           {apiError && <span style={{ color: 'var(--color-hot)', marginLeft: 8 }}>({apiError})</span>}
         </p>
       </div>
 
       <div className="filter-chips">
         <button
-          className={`filter-chip ${noWebsitesOnly ? 'filter-chip--active' : ''}`}
-          onClick={() => setNoWebsitesOnly(v => !v)}
+          className={`filter-chip ${hideWithWebsite ? 'filter-chip--active' : ''}`}
+          onClick={() => setHideWithWebsite(v => !v)}
         >
           Without Websites
         </button>
@@ -239,7 +270,7 @@ function FindingPage() {
         <div className="mock-map">
           <div className="mock-map__header">
             <div className="skeleton" style={{ width: 120, height: 16 }} />
-            <div className="skeleton" style={{ width: 140, height: 16 }} />
+            <div className="skeleton" style={{ width: 200, height: 16 }} />
           </div>
           <div className="mock-map__canvas skeleton" />
         </div>
@@ -376,11 +407,9 @@ function FindingPage() {
                 </div>
               </div>
               <div className="result-card__status">
-                {b.hasWebsite ? (
-                  <span className="chip chip--success">Has Website</span>
-                ) : (
-                  <span className="chip chip--new">Without Website</span>
-                )}
+                <span className={`chip ${STATUS_CHIP[b.websiteStatus] || 'chip--pending'}`}>
+                  {STATUS_LABELS[b.websiteStatus] || 'Pending Verification'}
+                </span>
               </div>
             </div>
           ))
