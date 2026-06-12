@@ -59,7 +59,6 @@ function FindingPage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [showPopup, setShowPopup] = useState(collectionNew);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [selectedCollIds, setSelectedCollIds] = useState(new Set());
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -153,9 +152,6 @@ function FindingPage() {
     .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
     .slice(0, 5);
 
-  const sortedCollections = [...collections]
-    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-
   const results = businesses.filter(b => {
     if (hideWithWebsite && b.websiteStatus === 'has_website') return false;
     if (activeCategory && b.type !== activeCategory) return false;
@@ -187,54 +183,31 @@ function FindingPage() {
     });
   }
 
-  function handleAddAllToRecent() {
-    const ids = results.map(b => b.id);
-    Promise.all(
-      recentCollections.map(c => addToCollection(c.id, ids))
-    ).then(responses => {
-      if (responses.every(r => r.ok)) {
-        const names = recentCollections.map(c => c.name).join(', ');
-        alert(`Added all to: ${names}`);
-      }
-    });
-  }
-
-  function handleAddAllToName() {
+  function handleAddSelectedToName() {
     const coll = collections.find(c => c.name === collectionName);
-    if (!coll) {
-      alert(`Collection "${collectionName}" not found.`);
-      return;
-    }
-    addToCollection(coll.id, results.map(b => b.id))
+    if (!coll || selectedIds.size === 0) return;
+    const selected = results.filter(b => selectedIds.has(b.id));
+    addToCollection(coll.id, selected.map(b => b.id))
       .then(res => {
-        if (res.ok) alert(`Added all to "${collectionName}"`);
+        if (res.ok) {
+          const names = selected.map(b => b.name).join(', ');
+          alert(`Added to "${collectionName}": ${names}`);
+        }
       });
   }
 
-  function toggleCollection(id) {
-    setSelectedCollIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleAddSelected() {
-    if (selectedCollIds.size === 0) return;
+  function handleAddSelectedToRecent(collId) {
     const selected = results.filter(b => selectedIds.has(b.id));
-    const targetColls = collections.filter(c => selectedCollIds.has(c.id));
-    const collNames = targetColls.map(c => c.name).join(', ');
-
-    Promise.all(
-      targetColls.map(c => addToCollection(c.id, selected.map(b => b.id)))
-    ).then(responses => {
-      if (responses.every(r => r.ok)) {
-        const bizNames = selected.map(b => b.name).join(', ');
-        alert(`Added to "${collNames}": ${bizNames}`);
-      }
-      setDropdownOpen(false);
-    });
+    const coll = collections.find(c => c.id === collId);
+    if (!coll) return;
+    addToCollection(collId, selected.map(b => b.id))
+      .then(res => {
+        if (res.ok) {
+          const names = selected.map(b => b.name).join(', ');
+          alert(`Added to "${coll.name}": ${names}`);
+        }
+        setDropdownOpen(false);
+      });
   }
 
   function statusCount(status) {
@@ -309,55 +282,44 @@ function FindingPage() {
             </span>
           </div>
 
-          {collectionNew ? (
-            <button className="btn btn--primary" onClick={handleAddAllToName}>
-              Add All to {collectionName}
-            </button>
-          ) : (
-            <button className="btn btn--primary" onClick={handleAddAllToRecent}>
-              Add All to 5 Recent
-            </button>
-          )}
-
-          <div className="add-bar__dropdown-wrapper">
+          <div className="add-bar__actions">
             <button
-              className="btn btn--secondary"
+              className="btn btn--primary"
               disabled={selectedIds.size === 0}
-              onClick={() => { setDropdownOpen(v => !v); if (!dropdownOpen) setSelectedCollIds(new Set()); }}
+              onClick={handleAddSelectedToName}
             >
-              {selectedCollIds.size > 0
-                ? `Add to ${selectedCollIds.size} collection${selectedCollIds.size > 1 ? 's' : ''}`
-                : 'Add Selected'}
+              {collectionName ? `Add Selected to ${collectionName}` : 'Add Selected'}
             </button>
-            {dropdownOpen && (
-              <div className="dropdown dropdown--wide">
-                <div className="dropdown__list">
-                  {sortedCollections.map(c => (
-                    <label className="dropdown__item" key={c.id}>
-                      <span className="checkbox">
-                        <input
-                          type="checkbox"
-                          checked={selectedCollIds.has(c.id)}
-                          onChange={() => toggleCollection(c.id)}
-                        />
-                        <span className="checkbox__mark" />
-                      </span>
-                      <span className="dropdown__item-name">{c.name}</span>
-                      {recentCollections.includes(c) && (
-                        <span className="chip chip--recent">Recent</span>
-                      )}
-                    </label>
-                  ))}
+
+            <div className="add-bar__dropdown-wrapper">
+              <button
+                className="btn btn--secondary"
+                disabled={selectedIds.size === 0}
+                onClick={() => setDropdownOpen(v => !v)}
+              >
+                Add to Recent
+              </button>
+              {dropdownOpen && (
+                <div className="dropdown dropdown--wide">
+                  <div className="dropdown__list">
+                    {recentCollections.length === 0 ? (
+                      <div className="dropdown__empty">No collections yet</div>
+                    ) : (
+                      recentCollections.map(c => (
+                        <button
+                          className="dropdown__item"
+                          key={c.id}
+                          onClick={() => handleAddSelectedToRecent(c.id)}
+                        >
+                          <span className="dropdown__item-name">{c.name}</span>
+                          <span className="chip chip--recent">Recent</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </div>
-                <button
-                  className="dropdown__apply"
-                  disabled={selectedCollIds.size === 0 || selectedIds.size === 0}
-                  onClick={handleAddSelected}
-                >
-                  Add to {selectedCollIds.size || '...'} collection{selectedCollIds.size !== 1 ? 's' : ''}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

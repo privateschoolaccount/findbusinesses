@@ -732,21 +732,25 @@
   font-family: var(--body-sm-font);
   font-size: var(--body-sm-size);
   font-weight: 500;
-  color: var(--on-surface-variant);
+  color: var(--on-surface);
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
 }
 
 .filter-chip:hover {
-  border-color: var(--color-navy);
-  color: var(--color-navy);
+  background: var(--surface-container-high);
 }
 
 .filter-chip--active {
   background: var(--color-navy);
   border-color: var(--color-navy);
   color: white;
+}
+
+.filter-chip--active:hover {
+  background: var(--color-navy);
+  color: var(--outline-variant);
 }
 
 /* ==============================
@@ -969,55 +973,17 @@
   margin-bottom: var(--space-md);
 }
 
-.add-bar__main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-success);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  font-family: var(--body-md-font);
-  font-size: var(--body-md-size);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.add-bar__main:hover {
-  background: #059669;
-}
-
-.add-bar__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius);
-  background: var(--surface-container-lowest);
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.add-bar__toggle:hover {
-  border-color: var(--color-navy);
-  color: var(--color-navy);
-}
-
-.add-bar__toggle--open svg {
-  transform: rotate(180deg);
-}
-
 .add-bar__select-all {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   flex: 1;
+}
+
+.add-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .add-bar__dropdown-wrapper {
@@ -1070,6 +1036,14 @@
 
 .dropdown__item:hover {
   background: var(--surface-container-high);
+}
+
+.dropdown__empty {
+  padding: var(--space-md);
+  text-align: center;
+  color: var(--on-surface-variant);
+  font-family: var(--body-sm-font);
+  font-size: var(--body-sm-size);
 }
 
 .dropdown__item-name {
