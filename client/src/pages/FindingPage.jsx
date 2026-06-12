@@ -31,6 +31,7 @@ function FindingPage() {
   const { collectionName } = useParams();
   const [searchParams] = useSearchParams();
   const collectionNew = searchParams.get('collectionNew') === 'true';
+  const searchPrompt = searchParams.get('searchPrompt') || collectionName || 'businesses';
 
   const [loading, setLoading] = useState(true);
   const [collections, setCollections] = useState([]);
@@ -45,33 +46,73 @@ function FindingPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    let pollTimer;
+    let safetyTimeout;
+
     fetch('/api/collections')
       .then(res => res.json())
-      .then(data => setCollections(data))
+      .then(data => { if (!cancelled) setCollections(data); })
       .catch(() => {});
 
-    const query = collectionName || 'businesses';
-    fetch(`/api/searches?wait=true`, {
+    fetch('/api/searches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, location: 'San Francisco', radius: 5000 }),
+      body: JSON.stringify({ query: searchPrompt, location: 'San Francisco', radius: 5000 }),
     })
       .then(res => res.json())
       .then(data => {
-        const items = data.results || data.rows || [];
-        if (items.length > 0) {
-          setBusinesses(items.map(normalizeBusiness));
-        } else {
-          setBusinesses(FALLBACK_BUSINESSES);
-        }
-        setLoading(false);
+        if (cancelled) return;
+        const searchId = data.id;
+
+        pollTimer = setInterval(() => {
+          if (cancelled) return;
+
+          fetch(`/api/searches/${searchId}/results`)
+            .then(res => res.json())
+            .then(resultData => {
+              if (cancelled) return;
+              const items = resultData.rows || [];
+              if (items.length > 0) {
+                setBusinesses(items.map(normalizeBusiness));
+                setLoading(false);
+              }
+            })
+            .catch(() => {});
+
+          fetch(`/api/searches/${searchId}`)
+            .then(res => res.json())
+            .then(searchData => {
+              if (cancelled) return;
+              if (searchData.status === 'completed' || searchData.status === 'failed') {
+                clearInterval(pollTimer);
+                clearTimeout(safetyTimeout);
+                setLoading(false);
+              }
+            })
+            .catch(() => {});
+        }, 3000);
+
+        safetyTimeout = setTimeout(() => {
+          clearInterval(pollTimer);
+          setLoading(false);
+          cancelled = true;
+        }, 120000);
       })
       .catch(() => {
-        setBusinesses(FALLBACK_BUSINESSES);
-        setApiError('Search API unavailable — showing sample data');
-        setLoading(false);
+        if (!cancelled) {
+          setBusinesses(FALLBACK_BUSINESSES);
+          setApiError('Search API unavailable — showing sample data');
+          setLoading(false);
+        }
       });
-  }, [collectionName]);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollTimer);
+      clearTimeout(safetyTimeout);
+    };
+  }, [collectionName, searchPrompt]);
 
   useEffect(() => {
     if (showPopup) {

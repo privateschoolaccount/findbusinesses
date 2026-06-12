@@ -15,6 +15,7 @@ const SUGGESTED_CATEGORIES = [
 function CreateCollectionPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
+  const [searchPrompt, setSearchPrompt] = useState('');
   const [location, setLocation] = useState('');
   const [tags, setTags] = useState([]);
   const [inputVal, setInputVal] = useState('');
@@ -50,10 +51,10 @@ function CreateCollectionPage() {
     })
       .then(res => res.json())
       .then(data => {
-        navigate(`/collections/finding/${encodeURIComponent(data.name)}?collectionNew=true`);
+        navigate(`/collections/finding/${encodeURIComponent(data.name)}?collectionNew=true&searchPrompt=${encodeURIComponent(searchPrompt.trim() || name.trim())}`);
       })
       .catch(() => {
-        navigate(`/collections/finding/${encodeURIComponent(name.trim())}?collectionNew=true`);
+        navigate(`/collections/finding/${encodeURIComponent(name.trim())}?collectionNew=true&searchPrompt=${encodeURIComponent(searchPrompt.trim() || name.trim())}`);
       });
   }
 
@@ -83,6 +84,19 @@ function CreateCollectionPage() {
             value={name}
             onChange={e => setName(e.target.value)}
             required
+          />
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="search-prompt">Search Prompt</label>
+          <textarea
+            id="search-prompt"
+            className="field__input"
+            style={{ resize: 'vertical', minHeight: 72, paddingTop: 'var(--space-sm)' }}
+            rows={3}
+            placeholder="Describe what to search for, e.g. SaaS companies in San Francisco"
+            value={searchPrompt}
+            onChange={e => setSearchPrompt(e.target.value)}
           />
         </div>
 

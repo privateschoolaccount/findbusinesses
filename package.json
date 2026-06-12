@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
-    "dev:api": "uvicorn api-python.app:app --reload",
+    "dev:api": "uvicorn app:app --reload --app-dir api-python",
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "deploy": "npm run build && npm run deploy --prefix api",
