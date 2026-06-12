@@ -1,0 +1,289 @@
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import MockMap from '../components/MockMap';
+
+const CATEGORIES = ['SaaS', 'Manufacturing', 'HealthTech', 'Enterprise Software', 'E-commerce', 'FinTech'];
+
+const MOCK_BUSINESSES = [
+  { id: 1, name: 'TechFlow Solutions', type: 'SaaS', area: 'San Francisco', hasWebsite: false, x: 35, y: 28 },
+  { id: 2, name: 'GreenLeaf Analytics', type: 'Data & AI', area: 'San Francisco', hasWebsite: true, x: 60, y: 45 },
+  { id: 3, name: 'BridgePoint Systems', type: 'SaaS', area: 'San Francisco', hasWebsite: false, x: 72, y: 55 },
+  { id: 4, name: 'NorthBay Software', type: 'Enterprise Software', area: 'San Francisco', hasWebsite: false, x: 45, y: 18 },
+  { id: 5, name: 'Coastal Data Group', type: 'FinTech', area: 'San Francisco', hasWebsite: true, x: 80, y: 70 },
+  { id: 6, name: 'Summit Innovations', type: 'HealthTech', area: 'San Francisco', hasWebsite: false, x: 22, y: 65 },
+  { id: 7, name: 'Pacific Digital', type: 'E-commerce', area: 'San Francisco', hasWebsite: false, x: 50, y: 80 },
+  { id: 8, name: 'Peninsula Robotics', type: 'Manufacturing', area: 'San Francisco', hasWebsite: false, x: 15, y: 40 },
+];
+
+const MOCK_COLLECTIONS = [
+  { id: 1, name: 'SaaS Companies' },
+  { id: 2, name: 'Manufacturing' },
+  { id: 3, name: 'HealthTech' },
+  { id: 4, name: 'Enterprise SaaS' },
+  { id: 5, name: 'Industrial Automation' },
+];
+
+function FindingPage() {
+  const { collectionName } = useParams();
+  const [searchParams] = useSearchParams();
+  const collectionNew = searchParams.get('collectionNew') === 'true';
+
+  const [loading, setLoading] = useState(true);
+  const [noWebsitesOnly, setNoWebsitesOnly] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [showPopup, setShowPopup] = useState(collectionNew);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedCollIds, setSelectedCollIds] = useState(new Set());
+  const [expanded, setExpanded] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (showPopup) {
+      const timer = setTimeout(() => setShowPopup(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showPopup]);
+
+  const results = MOCK_BUSINESSES.filter(b => {
+    if (noWebsitesOnly && b.hasWebsite) return false;
+    if (activeCategory && b.type !== activeCategory) return false;
+    return true;
+  });
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === results.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(results.map(b => b.id)));
+    }
+  }
+
+  function handleAddAll() {
+    const names = results.map(b => b.name).join(', ');
+    alert(`Added to "${collectionName}": ${names}`);
+  }
+
+  function toggleCollection(id) {
+    setSelectedCollIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleAddSelected() {
+    if (selectedCollIds.size === 0) return;
+    const selected = results.filter(b => selectedIds.has(b.id));
+    const collNames = MOCK_COLLECTIONS.filter(c => selectedCollIds.has(c.id)).map(c => c.name).join(', ');
+    const bizNames = selected.map(b => b.name).join(', ');
+    alert(`Added to "${collNames}": ${bizNames}`);
+    setDropdownOpen(false);
+  }
+
+  return (
+    <div className="search-page">
+      {showPopup && (
+        <div className="toast toast--success">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Collection "{collectionName}" created
+        </div>
+      )}
+
+      <div className="finding-page__header">
+        <h1 className="headline-md">{collectionName || 'Finding Businesses'}</h1>
+        <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 'var(--space-xs)' }}>
+          San Francisco &middot; {MOCK_BUSINESSES.filter(b => !b.hasWebsite).length} without website
+        </p>
+      </div>
+
+      <div className="filter-chips">
+        <button
+          className={`filter-chip ${noWebsitesOnly ? 'filter-chip--active' : ''}`}
+          onClick={() => setNoWebsitesOnly(v => !v)}
+        >
+          Without Websites
+        </button>
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            className={`filter-chip ${activeCategory === cat ? 'filter-chip--active' : ''}`}
+            onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="mock-map">
+          <div className="mock-map__header">
+            <div className="skeleton" style={{ width: 120, height: 16 }} />
+            <div className="skeleton" style={{ width: 140, height: 16 }} />
+          </div>
+          <div className="mock-map__canvas skeleton" />
+        </div>
+      ) : (
+        <MockMap businesses={results} area="San Francisco" />
+      )}
+
+      {!loading && collectionNew && (
+        <div className="add-bar">
+          <button className="add-bar__main" onClick={handleAddAll}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add All to {collectionName}
+          </button>
+          <button
+            className={`add-bar__toggle ${expanded ? 'add-bar__toggle--open' : ''}`}
+            onClick={() => setExpanded(v => !v)}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {!loading && !collectionNew && (
+        <div className="add-bar">
+          <div className="add-bar__select-all">
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === results.length && results.length > 0}
+                onChange={toggleSelectAll}
+              />
+              <span className="checkbox__mark" />
+            </label>
+            <span className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>
+              {selectedIds.size} selected
+            </span>
+          </div>
+          <div className="add-bar__dropdown-wrapper">
+            <button
+              className="btn btn--primary"
+              disabled={selectedIds.size === 0}
+              onClick={() => { setDropdownOpen(v => !v); if (!dropdownOpen) setSelectedCollIds(new Set()); }}
+            >
+              {selectedCollIds.size > 0
+                ? `Add to ${selectedCollIds.size} collection${selectedCollIds.size > 1 ? 's' : ''}`
+                : 'Add Selected'}
+            </button>
+            {dropdownOpen && (
+              <div className="dropdown">
+                <div className="dropdown__list">
+                  {MOCK_COLLECTIONS.map(c => (
+                    <label className="dropdown__item" key={c.id}>
+                      <span className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedCollIds.has(c.id)}
+                          onChange={() => toggleCollection(c.id)}
+                        />
+                        <span className="checkbox__mark" />
+                      </span>
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  className="dropdown__apply"
+                  disabled={selectedCollIds.size === 0 || selectedIds.size === 0}
+                  onClick={handleAddSelected}
+                >
+                  Add to {selectedCollIds.size || '...'} collection{selectedCollIds.size !== 1 ? 's' : ''}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="search-results">
+        <div className="search-results__header">
+          {loading ? (
+            <div className="skeleton" style={{ width: 100, height: 24 }} />
+          ) : (
+            <span className="headline-sm">{results.length} result{results.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div className="result-card" key={i}>
+              <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 'var(--radius)' }} />
+              <div className="result-card__content">
+                <div className="skeleton" style={{ width: '60%', height: 18, marginBottom: 6 }} />
+                <div className="skeleton" style={{ width: '40%', height: 14 }} />
+              </div>
+              <div className="skeleton" style={{ width: 90, height: 22, borderRadius: 9999 }} />
+            </div>
+          ))
+        ) : results.length === 0 ? (
+          <div className="empty-state">
+            <p className="body-md" style={{ color: 'var(--on-surface-variant)' }}>
+              No businesses found matching your criteria
+            </p>
+          </div>
+        ) : (
+          results.map(b => (
+            <div
+              className={`result-card ${selectedIds.has(b.id) ? 'result-card--selected' : ''}`}
+              key={b.id}
+              onClick={() => toggleSelect(b.id)}
+            >
+              <label className="checkbox" onClick={e => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(b.id)}
+                  onChange={() => toggleSelect(b.id)}
+                />
+                <span className="checkbox__mark" />
+              </label>
+              <div className="result-card__thumbnail">
+                {b.name.charAt(0)}
+              </div>
+              <div className="result-card__content">
+                <div className="result-card__name">{b.name}</div>
+                <div className="result-card__meta">
+                  <span className="body-sm">{b.type}</span>
+                  <span className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>&middot;</span>
+                  <span className="body-sm">{b.area}</span>
+                </div>
+              </div>
+              <div className="result-card__status">
+                {b.hasWebsite ? (
+                  <span className="chip chip--success">Has Website</span>
+                ) : (
+                  <span className="chip chip--new">Without Website</span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default FindingPage;

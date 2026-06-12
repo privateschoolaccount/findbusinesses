@@ -1,20 +1,23 @@
-import { useEffect, useState } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import BottomNav from './components/BottomNav';
+import CollectionsPage from './pages/CollectionsPage';
+import CreateCollectionPage from './pages/CreateCollectionPage';
+import FindingPage from './pages/FindingPage';
 import './App.css';
 
 function App() {
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    fetch('/api/hello')
-      .then((res) => res.json())
-      .then((data) => setMessage(data.message))
-      .catch(() => setMessage('Could not reach API'));
-  }, []);
-
   return (
-    <div className="app">
-      <h1>Find Businesses</h1>
-      <p>{message || 'Loading...'}</p>
+    <div className="app-layout">
+      <Navbar />
+      <main className="app-main">
+        <Routes>
+          <Route path="/" element={<CollectionsPage />} />
+          <Route path="/collections/new" element={<CreateCollectionPage />} />
+          <Route path="/collections/finding/:collectionName" element={<FindingPage />} />
+        </Routes>
+      </main>
+      <BottomNav />
     </div>
   );
 }
