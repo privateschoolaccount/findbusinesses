@@ -314,7 +314,18 @@ def _enrich_collection(row: dict) -> dict:
 
 def add_businesses_to_collection(collection_id: int, result_ids: list[str]):
     db = get_db()
-    for rid in result_ids:
+    if not result_ids:
+        return
+    placeholders = ','.join('?' * len(result_ids))
+    valid_ids = [
+        row['id'] for row in db.execute(
+            f'SELECT id FROM results WHERE id IN ({placeholders})',
+            result_ids,
+        ).fetchall()
+    ]
+    if not valid_ids:
+        return
+    for rid in valid_ids:
         db.execute(
             'INSERT OR IGNORE INTO collection_businesses (collection_id, result_id) VALUES (?, ?)',
             (collection_id, rid),

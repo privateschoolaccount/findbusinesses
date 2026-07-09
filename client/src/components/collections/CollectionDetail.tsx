@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import { useParams, Link } from 'react-router-dom'
 import { ResultTable } from '@/components/results/ResultTable'
-import { ArrowLeft, MapPin, Tag } from 'lucide-react'
+import { ArrowLeft, Download, MapPin, Tag } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { useState } from 'react'
 
 export function CollectionDetail() {
   const { id } = useParams<{ id: string }>()
   const collectionId = Number(id)
+  const [exporting, setExporting] = useState(false)
 
   const { data: collection, isLoading: collectionLoading } = useQuery({
     queryKey: ['collection', collectionId],
@@ -20,6 +22,17 @@ export function CollectionDetail() {
     queryFn: () => api.getCollectionBusinesses(collectionId, { page: 1, limit: 100 }),
     enabled: !isNaN(collectionId),
   })
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await api.exportGhlCsv(collectionId)
+    } catch (e) {
+      console.error('Export failed:', e)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (collectionLoading) {
     return (
@@ -47,7 +60,7 @@ export function CollectionDetail() {
         <Link to="/collections" className="text-text-muted hover:text-text-secondary transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold text-text-primary sm:text-xl">{collection.name}</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-text-muted sm:gap-3">
             {collection.location && (
@@ -58,6 +71,14 @@ export function CollectionDetail() {
             <span>Created {formatDateTime(collection.created_at)}</span>
           </div>
         </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting || !collection.totalLeads}
+          className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? 'Exporting...' : 'Export GHL CSV'}
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4">

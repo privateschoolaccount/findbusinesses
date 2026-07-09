@@ -1,4 +1,10 @@
+import csv
+import io
+import json
+import uuid
+
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from database import (
     create_collection,
@@ -9,6 +15,7 @@ from database import (
     add_businesses_to_collection,
     remove_business_from_collection,
     list_collection_businesses,
+    get_db,
 )
 from models import (
     CollectionCreate,
@@ -65,6 +72,82 @@ async def delete_collection_endpoint(collection_id: int):
     if not collection:
         raise HTTPException(404, 'Collection not found')
     delete_collection(collection_id)
+
+
+@router.get('/{collection_id}/export/ghl-csv',
+    summary='Export collection as GoHighLevel CSV',
+    description='Downloads a GoHighLevel-compatible CSV of all contacts in this collection.')
+async def export_ghl_csv_endpoint(collection_id: int):
+    collection = get_collection(collection_id)
+    if not collection:
+        raise HTTPException(404, 'Collection not found')
+
+    db = get_db()
+    rows = db.execute(
+        '''SELECT r.*
+           FROM collection_businesses cb
+           JOIN results r ON r.id = cb.result_id
+           WHERE cb.collection_id = ?
+           ORDER BY cb.added_at DESC''',
+        (collection_id,),
+    ).fetchall()
+
+    if not rows:
+        raise HTTPException(404, 'No businesses in this collection')
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'First Name', 'Last Name', 'Email', 'Phone', 'Company Name',
+        'Address', 'Website', 'Tags', 'Notes', 'Source',
+    ])
+
+    collection_tags = collection.get('tags') or []
+
+    for row in rows:
+        row = dict(row)
+        name = row.get('name') or ''
+        address = row.get('address') or ''
+        phone = row.get('phone') or ''
+        website = row.get('website') or row.get('network_site') or ''
+        notes = row.get('notes') or ''
+        categories = row.get('categories')
+        if isinstance(categories, str):
+            categories = json.loads(categories)
+
+        tags = list(collection_tags)
+        if categories:
+            tags.extend(categories)
+        tags_str = ', '.join(tags)
+
+        first_name = ''
+        last_name = ''
+        email = ''
+        
+        if not first_name and not email and not phone:
+            first_name = f'Temporary {uuid.uuid4()}'
+
+        writer.writerow([
+            first_name,
+            last_name,
+            email,
+            phone,
+            name,
+            address,
+            website,
+            tags_str,
+            notes,
+            'FindBusinesses',
+        ])
+
+    output.seek(0)
+    filename = f"{collection['name'].replace(' ', '_')}_ghl_import.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get('/{collection_id}/businesses',

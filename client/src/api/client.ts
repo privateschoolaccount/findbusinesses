@@ -96,4 +96,24 @@ export const api = {
 
   removeBusinessFromCollection: (collectionId: number, resultId: string) =>
     request<void>(`/collections/${collectionId}/businesses/${resultId}`, { method: 'DELETE' }),
+
+  exportGhlCsv: async (id: number) => {
+    const res = await fetch(`${BASE}/collections/${id}/export/ghl-csv`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }))
+      throw new Error(body.error || `Export failed: ${res.status}`)
+    }
+    const blob = await res.blob()
+    const disposition = res.headers.get('Content-Disposition') || ''
+    const match = disposition.match(/filename="?(.+?)"?$/)
+    const filename = match ? match[1] : `collection_${id}_ghl.csv`
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
 }
