@@ -23,22 +23,32 @@ async def run_search(query: str, location: str, radius: int = 5000, type: str | 
         result_ids: dict[str, str] = {}
 
         for place in places:
-            if place.get('website'):
-                with_website += 1
-                continue
-
             result_id = str(uuid.uuid4())
-            create_result(
-                id=result_id, search_id=search_id,
-                name=place['name'], address=place.get('address'),
-                phone=place.get('phone'), place_id=place.get('placeId'),
-                website=None,
-                status='pending_verification', verification_method='google_maps',
-                rating=place.get('rating'), total_ratings=place.get('totalRatings'),
-                categories=place.get('categories'), lat=place.get('lat'), lng=place.get('lng'),
-            )
-            result_ids[place['placeId']] = result_id
-            pending_verification += 1
+
+            if place.get('website'):
+                create_result(
+                    id=result_id, search_id=search_id,
+                    name=place['name'], address=place.get('address'),
+                    phone=place.get('phone'), place_id=place.get('placeId'),
+                    website=place['website'],
+                    status='has_website', verification_method='google_maps',
+                    rating=place.get('rating'), total_ratings=place.get('totalRatings'),
+                    categories=place.get('categories'), lat=place.get('lat'), lng=place.get('lng'),
+                )
+                result_ids[place['placeId']] = result_id
+                with_website += 1
+            else:
+                create_result(
+                    id=result_id, search_id=search_id,
+                    name=place['name'], address=place.get('address'),
+                    phone=place.get('phone'), place_id=place.get('placeId'),
+                    website=None,
+                    status='pending_verification', verification_method='google_maps',
+                    rating=place.get('rating'), total_ratings=place.get('totalRatings'),
+                    categories=place.get('categories'), lat=place.get('lat'), lng=place.get('lng'),
+                )
+                result_ids[place['placeId']] = result_id
+                pending_verification += 1
 
         verifiable = [p for p in places if not p.get('website')]
 
